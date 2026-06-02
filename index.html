@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<meta name="theme-color" content="#0A0B16">
+<title>Shreekanth Gym</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700;900&family=DM+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0A0B16}
+body{font-family:'DM Sans',-apple-system,'Helvetica Neue',sans-serif;color:#F0F0FC}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+#hdr{flex-shrink:0;background:#12131E;border-bottom:1px solid rgba(255,255,255,.07);padding:12px 18px;padding-top:max(14px,env(safe-area-inset-top))}
+#con{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#0A0B16;padding-bottom:4px}
+#nav{flex-shrink:0;background:#12131E;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:stretch;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+input,textarea{-webkit-appearance:none;background:#1A1B2D;border:1px solid rgba(255,255,255,.07);border-radius:10px;color:#F0F0FC;font-size:16px;font-family:inherit;padding:10px 12px;width:100%;outline:none;resize:none}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,.2)}
+::-webkit-scrollbar{display:none}
+.card{background:#12131E;border-radius:16px;border:1px solid rgba(255,255,255,.07);padding:14px 16px;margin-bottom:10px}
+.recrow{background:#12131E;border-radius:14px;border:1px solid rgba(255,255,255,.07);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.ex-body{display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
+.ex-card.open .ex-body{display:block}
+.mono{font-family:'Chakra Petch',Impact,monospace}
+.lbl{color:#585870;font-size:11px;font-weight:700;letter-spacing:.08em;margin-bottom:8px}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+#con>*{animation:fi .18s ease}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr"></div>
+  <div id="con"></div>
+  <div id="nav"></div>
+</div>
+<script>
+// ── DATA ────────────────────────────────────────────────────────
+const DY={
+  MON:{l:'PUSH', m:'Chest · Triceps',             a:'#FF6535',bg:'#1C0C05',b:'#FF653540'},
+  TUE:{l:'PULL', m:'Back · Biceps',               a:'#7B6FFF',bg:'#0F0D25',b:'#7B6FFF40'},
+  WED:{l:'LEGS', m:'Quads · Hams · Glutes',       a:'#00C87A',bg:'#04190F',b:'#00C87A40'},
+  THU:{l:'SHLDS',m:'Shoulders · Traps · Core',    a:'#FFB020',bg:'#1C1000',b:'#FFB02040'},
+  FRI:{l:'ARMS', m:'Biceps · Triceps · Forearms', a:'#3CA8FF',bg:'#051322',b:'#3CA8FF40'},
+};
+const PLAN={
+  MON:{wu:'Arm circles + band pull-aparts (2×15)',ex:[
+    {n:'Incline DB / BB press',  s:'4×8-10',  r:'2 min',  b:'Inhale down → Exhale up',           c:'30-45° incline. 2 sec lowering. Do not lock elbows at top.',ns:4,star:1},
+    {n:'Flat dumbbell press',    s:'3×10-12', r:'90 sec', b:'Inhale down → Exhale up',           c:'Elbows at 75°. Pause 1 sec at bottom.',ns:3,star:0},
+    {n:'Pec deck fly',           s:'3×12-15', r:'60 sec', b:'Exhale squeezing in',               c:'Squeeze 1 sec at centre. Open slowly.',ns:3,star:0},
+    {n:'Tricep pushdown (cable)',s:'3×12-15', r:'60 sec', b:'Exhale pushing down',               c:'Elbows pinned. Only forearms move. 2 sec hold at bottom.',ns:3,star:0},
+    {n:'Overhead DB tricep ext', s:'3×12',    r:'60 sec', b:'Inhale down → Exhale up',           c:'Elbows pointing up. Do not flare. Slow lowering.',ns:3,star:0},
+  ]},
+  TUE:{wu:'Dead hangs from pull-up bar (2×20 sec)',ex:[
+    {n:'Lat pulldown wide grip', s:'4×8-10',    r:'2 min',  b:'Inhale top → Exhale pulling down', c:'Pull to upper chest. Lean back 10-15°. 3 sec slow return.',ns:4,star:1},
+    {n:'Seated cable row',       s:'4×10-12',   r:'90 sec', b:'Exhale rowing in',                 c:'Sit tall. Squeeze shoulder blades. 2 sec hold at peak.',ns:4,star:1},
+    {n:'DB single-arm row',      s:'3×10-12 ea',r:'60 sec', b:'Exhale rowing up',                 c:'Back flat. Row toward hip. Full stretch at bottom.',ns:3,star:0},
+    {n:'Barbell curl',           s:'3×10-12',   r:'90 sec', b:'Exhale curling up',                c:'No swinging. Elbows at sides. 3 sec lowering.',ns:3,star:0},
+    {n:'Incline dumbbell curl',  s:'3×12',      r:'60 sec', b:'Exhale curling up',                c:'Upper arm stays vertical. 2 sec squeeze at top.',ns:3,star:0},
+  ]},
+  WED:{wu:'BW squat + hip circles (2×15)',ex:[
+    {n:'Barbell back squat',     s:'4×8-10',   r:'2-3 min',b:'Big inhale before descent → Exhale up',c:'Chest up. Go to parallel. Knees over toes. Start light.',ns:4,star:1},
+    {n:'Leg press (machine)',    s:'3×12-15',  r:'90 sec', b:'Inhale lowering → Exhale pressing',    c:'Feet mid-platform. Do not lock knees. Back stays on pad.',ns:3,star:0},
+    {n:'DB walking lunges',      s:'3×10 each',r:'90 sec', b:'Exhale stepping forward',              c:'Torso upright. Big step. Back knee 2cm from floor.',ns:3,star:0},
+    {n:'Romanian deadlift (RDL)',s:'3×10-12',  r:'90 sec', b:'Inhale down → Exhale driving up',     c:'Push hips back. Feel hamstring stretch. Bar close to legs.',ns:3,star:0},
+    {n:'Leg curl (machine)',     s:'3×12-15',  r:'60 sec', b:'Exhale curling up',                   c:'Hips flat on pad. 3 sec slow lowering.',ns:3,star:0},
+    {n:'Standing calf raise',    s:'4×15-20',  r:'45 sec', b:'Exhale raising up',                   c:'Full stretch at bottom. 1 sec pause at top.',ns:4,star:0},
+  ]},
+  THU:{wu:'Band pull-aparts (2×20)',ex:[
+    {n:'Seated DB shoulder press',s:'4×8-10',       r:'2 min',  b:'Exhale pressing up', c:'Elbows slightly in front. No lower back arch.',ns:4,star:1},
+    {n:'Lateral raises',          s:'4×12-15',      r:'60 sec', b:'Exhale raising up',  c:'Lead with elbows. 3 sec slow lowering. V-taper maker.',ns:4,star:1},
+    {n:'Arnold press',            s:'3×10-12',      r:'90 sec', b:'Exhale pressing up', c:'Palms face you at start, rotate out as you press.',ns:3,star:0},
+    {n:'Lateral raises drop set', s:'3×15→drop→10', r:'90 sec', b:'Exhale raising up',  c:'Do 15, drop 30% weight, do 10 more immediately.',ns:3,star:0},
+    {n:'Upright row (barbell)',   s:'3×12',         r:'60 sec', b:'Exhale pulling up',  c:'Pull to chin only. Elbows above wrists. Wide grip.',ns:3,star:0},
+    {n:'Hanging knee raises',     s:'3×15',         r:'60 sec', b:'Exhale raising knees',c:'Do not swing. 3 sec lowering.',ns:3,star:0},
+    {n:'Plank',                   s:'3×40 sec',     r:'45 sec', b:'Steady breathing',   c:'Squeeze glutes + abs. Hips level.',ns:3,star:0},
+  ]},
+  FRI:{wu:null,ex:[
+    {n:'Barbell curl',            s:'4×8-10',  r:'90 sec', b:'Exhale curling up',      c:'No swinging. Elbows at sides. 3 sec lowering. Add weight weekly.',ns:4,star:1},
+    {n:'Dumbbell hammer curl',    s:'3×12',    r:'60 sec', b:'Exhale curling up',      c:'Neutral grip. Builds arm thickness. Slow lowering.',ns:3,star:0},
+    {n:'Concentration curl',      s:'3×12 ea', r:'60 sec', b:'Exhale curling up',      c:'Elbow on inner thigh. Squeeze 2 sec at top.',ns:3,star:0},
+    {n:'Close-grip bench press',  s:'4×8-10',  r:'90 sec', b:'Inhale down → Exhale up',c:'Hands shoulder-width. Elbows close to body.',ns:4,star:1},
+    {n:'Tricep pushdown (cable)', s:'3×12-15', r:'60 sec', b:'Exhale pushing down',   c:'Elbows pinned. Only forearms move.',ns:3,star:0},
+    {n:'Overhead DB tricep ext',  s:'3×12',    r:'60 sec', b:'Inhale down → Exhale up',c:'Elbows pointing up. Do not flare.',ns:3,star:0},
+    {n:'Wrist curl (DB or band)', s:'3×20',    r:'45 sec', b:'Exhale curling up',      c:'Only wrist moves. Do palms-up + palms-down.',ns:3,star:0},
+  ]},
+};
+const MEALS=[
+  {t:'7:00 AM', m:'Morning pre-workout',f:'10 almonds + 20g pumpkin seeds + black coffee',p:'~5g',k:'~180',n:'Keep this — already great',key:0},
+  {t:'8:30 AM', m:'Post-workout ⭐',    f:'Whey shake (25g protein) + 1 banana  OR  3 whole eggs + 1 roti',p:'~28g',k:'~380',n:'Critical — eat within 45 min of gym. +1 banana on heavy days.',key:1},
+  {t:'1:00 PM', m:'Lunch',             f:'2-3 roti + dal + sabzi + 400ml buttermilk',p:'~28g',k:'~580',n:'Already good. +1 roti on leg day.',key:0},
+  {t:'4:00 PM', m:'Afternoon snack',   f:'100g hung curd + salt + jeera  OR  4 boiled egg whites',p:'~22g',k:'~160',n:'Closes the long lunch-dinner gap.',key:0},
+  {t:'8:00 PM', m:'Dinner',            f:'Paneer wrap (100g paneer) OR soya wrap (30g dry) + 2 whole eggs + 2 egg whites',p:'~45g',k:'~600',n:'Already good. Keep as is.',key:0},
+];
+const RULES=[
+  'Hit 140g protein daily — Whey + eggs + paneer + soya',
+  'Eat 2,000-2,100 kcal — Slight surplus for muscle growth',
+  'Post-workout meal within 45 min — Muscle synthesis peaks now',
+  'Add 1 roti + 1 fruit on gym days — Muscles need fuel',
+  'Sleep 7-8 hours — Muscle is built during sleep, not training',
+  'Drink 3-3.5L water daily — Dehydration kills strength',
+];
+
+// ── STATE ────────────────────────────────────────────────────────
+const S={
+  tab:'workout',
+  day:({1:'MON',2:'TUE',3:'WED',4:'THU',5:'FRI'}[new Date().getDay()])||'MON',
+  week:1,
+  sessions:{},
+  bodyLogs:{},
+  // Log form
+  logDay:null, logWeek:null,
+  draft:{},  // {exName: ['20x10','22x8','',...]}
+  felt:'G',
+  logNotes:'',
+  skipConfirm:false,
+  // Body form
+  bWk:null, bW:'', bWaist:'', bChest:'', bBicep:'', bNotes:'',
+};
+
+// ── STORAGE ──────────────────────────────────────────────────────
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem('shree-gym-v2')||'{}');
+    if(d.week) S.week=d.week;
+    if(d.sessions) S.sessions=d.sessions;
+    if(d.bodyLogs) S.bodyLogs=d.bodyLogs;
+  }catch(e){}
+  S.logDay=S.day; S.logWeek=S.week; initDraft(S.day,S.week);
+  S.bWk=S.week; initBody(S.week);
+}
+function persist(){
+  try{ localStorage.setItem('shree-gym-v2',JSON.stringify({week:S.week,sessions:S.sessions,bodyLogs:S.bodyLogs})); }catch(e){}
+}
+function initDraft(day,week){
+  const key=`W${week}-${day}`;
+  const ex=S.sessions[key];
+  S.draft={}; S.felt=ex?.felt||'G'; S.logNotes=ex?.notes||'';
+  PLAN[day].ex.forEach(e=>{
+    S.draft[e.n]=ex?.exercises?.[e.n]||Array(e.ns).fill('');
+  });
+}
+function initBody(week){
+  const b=S.bodyLogs[`W${week}`]||{};
+  S.bW=b.weight||''; S.bWaist=b.waist||''; S.bChest=b.chest||''; S.bBicep=b.bicep||''; S.bNotes=b.notes||'';
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────
+const G='#00C47C', BDR='rgba(255,255,255,.07)', MUT='#585870';
+const h=s=>`<div style="color:${MUT};font-size:11px;font-weight:700;letter-spacing:.08em;margin-bottom:8px">${s}</div>`;
+const card=(inner,extra='')=>`<div class="card" ${extra}>${inner}</div>`;
+
+// ── HEADER ────────────────────────────────────────────────────────
+function hdrHTML(){
+  const dc=DY[S.day];
+  const dt=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'}).toUpperCase();
+  return `<div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="color:${MUT};font-size:11px;font-weight:700;letter-spacing:.1em">${dt}</div>
+      <div class="mono" style="color:#F0F0FC;font-size:22px;font-weight:900;letter-spacing:.03em;margin-top:2px">SHREEKANTH 🏋️</div>
+    </div>
+    <div onclick="setTab('dashboard')" style="background:${dc.bg};border:1px solid ${dc.b};border-radius:14px;padding:7px 14px;text-align:center;cursor:pointer">
+      <div class="mono" style="color:${dc.a};font-size:20px;font-weight:900;line-height:1">W${S.week}</div>
+      <div style="color:${dc.a}88;font-size:10px;font-weight:700;line-height:1.5">of 16</div>
+    </div>
+  </div>`;
+}
+
+// ── NAV ───────────────────────────────────────────────────────────
+function navHTML(){
+  return [{k:'dashboard',i:'📊',l:'Home'},{k:'workout',i:'💪',l:'Today'},{k:'log',i:'➕',l:'Log'},{k:'body',i:'📏',l:'Body'},{k:'food',i:'🥗',l:'Food'}]
+    .map(t=>`<button onclick="setTab('${t.k}')" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px 10px;background:none;border:none;cursor:pointer;min-height:54px;justify-content:center">
+      <span style="font-size:22px">${t.i}</span>
+      <span style="font-size:10px;font-weight:${S.tab===t.k?700:500};color:${S.tab===t.k?'#F0F0FC':MUT};margin-top:3px">${t.l}</span>
+      ${S.tab===t.k?`<div style="width:4px;height:4px;border-radius:50%;background:${G};margin-top:3px"></div>`:''}
+    </button>`).join('');
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+function dashHTML(){
+  const done=Object.entries(S.sessions).filter(([,s])=>s.done);
+  const wkDone=['MON','TUE','WED','THU','FRI'].filter(d=>S.sessions[`W${S.week}-${d}`]?.done).length;
+  const skip=Object.values(S.sessions).filter(s=>s.skipped).length;
+  const bod=Object.values(S.bodyLogs).filter(b=>b.weight).sort((a,b)=>a.week-b.week);
+  const lat=bod.at(-1);
+  const latW=lat?.weight??'72.0';
+  const wDiff=lat?.waist?(lat.waist-90).toFixed(1):null;
+  const wChg=wDiff!==null?(wDiff>0?'+':'')+wDiff+' cm':'—';
+  const pct=Math.round((S.week/16)*100);
+  const tdDay={1:'MON',2:'TUE',3:'WED',4:'THU',5:'FRI'}[new Date().getDay()];
+
+  const statsGrid=[
+    {l:'Sessions/week',v:`${wkDone}/5`,a:wkDone>=5?G:DY.TUE.a},
+    {l:'Total logged',v:done.length,a:G},
+    {l:'Skipped',v:skip,a:skip>3?'#FF6535':MUT},
+    {l:'Weight',v:`${latW} kg`,a:DY.FRI.a},
+    {l:'Waist Δ',v:wChg,a:lat?.waist&&lat.waist<90?G:MUT},
+    {l:'Progress',v:`${pct}%`,a:G},
+  ].map(s=>`<div style="background:#1A1B2D;border-radius:12px;border:1px solid ${BDR};padding:10px">
+    <div style="color:${MUT};font-size:10px;font-weight:600;margin-bottom:4px;line-height:1.2">${s.l}</div>
+    <div class="mono" style="color:${s.a};font-size:18px;font-weight:900;line-height:1">${s.v}</div>
+  </div>`).join('');
+
+  const tdBtn=tdDay?`<button onclick="setDay('${tdDay}');setTab('workout')" style="background:${DY[tdDay].bg};border:1px solid ${DY[tdDay].b};border-radius:16px;padding:16px;width:100%;text-align:left;cursor:pointer;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="color:${DY[tdDay].a};font-size:10px;font-weight:700;letter-spacing:.1em">TODAY'S WORKOUT →</div>
+      <div class="mono" style="color:#F0F0FC;font-size:20px;font-weight:900;margin-top:4px">${tdDay} — ${DY[tdDay].l}</div>
+      <div style="color:${DY[tdDay].a}BB;font-size:12px;margin-top:2px">${DY[tdDay].m}</div>
+    </div>
+    <div style="color:${DY[tdDay].a};font-size:30px;line-height:1">→</div>
+  </button>`:'';
+
+  const recent=done.length===0
+    ?`<div class="card" style="text-align:center;padding:28px"><div style="font-size:28px">💪</div><div style="color:${MUT};font-size:13px;margin-top:8px">No sessions logged yet — start today!</div></div>`
+    :done.sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5).map(([key,sess])=>{
+      const [wk,dk]=key.split('-');
+      const dc=DY[dk]||{a:MUT,bg:'#1A1B2D',b:BDR,l:''};
+      return `<div class="recrow">
+        <div style="background:${dc.bg};border:1px solid ${dc.b};border-radius:10px;padding:6px 10px;flex-shrink:0;text-align:center">
+          <div style="color:${dc.a};font-size:11px;font-weight:800">${dk}</div>
+          <div style="color:${dc.a}99;font-size:9px;font-weight:600">${dc.l}</div>
+        </div>
+        <div style="flex:1">
+          <div style="color:#F0F0FC;font-size:13px;font-weight:600">${wk} · ${sess.date||'—'}</div>
+          <div style="color:${MUT};font-size:11px;margin-top:2px">Felt: ${sess.felt||'—'} · ${Object.keys(sess.exercises||{}).length} exercises</div>
+        </div>
+        <div style="color:${G};font-size:20px">✓</div>
+      </div>`;
+    }).join('');
+
+  return `<div style="padding:0 14px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 10px">
+      <span style="color:${MUT};font-size:11px;font-weight:700;letter-spacing:.08em">CURRENT WEEK</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="chWk(-1)" style="background:#1A1B2D;border:1px solid ${BDR};color:#F0F0FC;border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer">−</button>
+        <span class="mono" style="color:#F0F0FC;font-size:26px;font-weight:900;min-width:28px;text-align:center">${S.week}</span>
+        <button onclick="chWk(1)"  style="background:#1A1B2D;border:1px solid ${BDR};color:#F0F0FC;border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer">+</button>
+        <span style="color:${MUT};font-size:13px">/ 16</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">${statsGrid}</div>
+    ${card(`<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:${MUT};font-size:11px;font-weight:700;letter-spacing:.06em">16-WEEK JOURNEY</span><span style="color:${G};font-size:11px;font-weight:700">Week ${S.week}/16 · ${pct}%</span></div>
+      <div style="background:#1A1B2D;border-radius:6px;height:10px;overflow:hidden"><div style="background:linear-gradient(90deg,${G},#00E89F);height:100%;width:${pct}%;border-radius:6px;transition:width .4s"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">${[1,4,8,12,16].map(w=>`<span style="color:${S.week>=w?G:MUT};font-size:10px;font-weight:700">W${w}</span>`).join('')}</div>`,'style="margin-bottom:12px"')}
+    ${tdBtn}
+    ${h('RECENT SESSIONS')}${recent}
+  </div>`;
+}
+
+// ── WORKOUT TAB ───────────────────────────────────────────────────
+function workHTML(){
+  const dc=DY[S.day];
+  const plan=PLAN[S.day];
+  const key=`W${S.week}-${S.day}`;
+  const sess=S.sessions[key]||{};
+  const pills=Object.keys(DY).map(d=>{
+    const c=DY[d]; const dn=S.sessions[`W${S.week}-${d}`]?.done; const sk=S.sessions[`W${S.week}-${d}`]?.skipped;
+    return `<button onclick="setDay('${d}')" style="flex-shrink:0;border:${d===S.day?`2px solid ${c.a}`:`1px solid ${BDR}`};background:${d===S.day?c.bg:'transparent'};border-radius:12px;padding:8px 14px;cursor:pointer;position:relative;min-height:44px;min-width:52px">
+      ${(dn||sk)?`<div style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:${dn?G:'#FF6535'};border:2px solid #0A0B16"></div>`:''}
+      <div style="color:${d===S.day?c.a:MUT};font-size:12px;font-weight:700">${d}</div>
+      <div style="color:${d===S.day?c.a+'AA':MUT+'66'};font-size:9px;font-weight:600">${c.l}</div>
+    </button>`;
+  }).join('');
+
+  const exCards=plan.ex.map((ex,i)=>{
+    const prev=sess.exercises?.[ex.n];
+    return `<div class="ex-card card" id="ex${i}" style="cursor:pointer" onclick="toggleEx(${i})">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px">
+            ${ex.star?'<span style="color:#FFD700;font-size:13px">⭐</span>':''}
+            <span style="color:#F0F0FC;font-size:14px;font-weight:700">${ex.n}</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:5px">
+            <span style="background:${dc.bg};color:${dc.a};font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px">${ex.s}</span>
+            <span style="color:${MUT};font-size:11px;font-weight:600">Rest: ${ex.r}</span>
+          </div>
+        </div>
+        <span style="color:${MUT};font-size:14px;margin-left:8px">▼</span>
+      </div>
+      <div class="ex-body">
+        <div style="background:#1A1B2D;border-radius:10px;padding:9px 12px;margin-bottom:8px">
+          <div style="color:${dc.a};font-size:10px;font-weight:700;margin-bottom:3px">BREATHING</div>
+          <div style="color:#F0F0FC;font-size:13px;line-height:1.5">${ex.b}</div>
+        </div>
+        <div style="background:#1A1B2D;border-radius:10px;padding:9px 12px${prev?';margin-bottom:8px':''}">
+          <div style="color:#FFD700;font-size:10px;font-weight:700;margin-bottom:3px">FORM CUE</div>
+          <div style="color:#F0F0FC;font-size:13px;line-height:1.5">${ex.c}</div>
+        </div>
+        ${prev?`<div style="background:${G}14;border:1px solid ${G}33;border-radius:10px;padding:8px 12px">
+          <div style="color:${G};font-size:10px;font-weight:700;margin-bottom:3px">LAST LOGGED</div>
+          <div style="color:#F0F0FC;font-size:12px">${(Array.isArray(prev)?prev:[]).filter(Boolean).join('   ')}</div>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:12px 14px 8px;scrollbar-width:none">${pills}</div>
+    <div style="margin:0 14px 12px;background:${dc.bg};border-radius:16px;border:1px solid ${dc.b};padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="color:${dc.a};font-size:10px;font-weight:700;letter-spacing:.1em">WEEK ${S.week} · ${S.day}</div>
+          <div class="mono" style="color:#F0F0FC;font-size:24px;font-weight:900;margin-top:4px;letter-spacing:.02em">${dc.l}</div>
+          <div style="color:${dc.a}BB;font-size:13px;margin-top:2px">${dc.m}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          ${sess.done?`<span style="background:${G}33;color:${G};border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700">✓ DONE</span>`:''}
+          ${sess.skipped?`<span style="background:#FF653533;color:#FF6535;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700">SKIPPED</span>`:''}
+          <span style="background:rgba(255,255,255,.06);border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;color:${MUT}">${plan.ex.length} exercises</span>
+        </div>
+      </div>
+      ${plan.wu?`<div style="margin-top:12px;background:rgba(255,255,255,.05);border-radius:10px;padding:8px 12px"><span style="color:${MUT};font-size:10px;font-weight:700">WARM-UP  </span><span style="color:#F0F0FCCC;font-size:12px">${plan.wu}</span></div>`:''}
+    </div>
+    <div style="padding:0 14px">${exCards}</div>
+  </div>`;
+}
+
+// ── LOG TAB ───────────────────────────────────────────────────────
+function logHTML(){
+  const dc=DY[S.logDay];
+  const key=`W${S.logWeek}-${S.logDay}`;
+  const exist=S.sessions[key];
+
+  const dayPills=Object.keys(DY).map(d=>{
+    const c=DY[d];
+    return `<button onclick="pickLogDay('${d}')" style="flex:1;border:${d===S.logDay?`2px solid ${c.a}`:`1px solid ${BDR}`};background:${d===S.logDay?c.bg:'transparent'};border-radius:10px;padding:8px 4px;cursor:pointer;min-height:44px">
+      <div style="color:${d===S.logDay?c.a:MUT};font-size:12px;font-weight:700">${d}</div>
+      <div style="color:${d===S.logDay?c.a+'99':MUT+'66'};font-size:9px">${c.l}</div>
+    </button>`;
+  }).join('');
+
+  const exInputs=PLAN[S.logDay].ex.map((ex,ei)=>{
+    const sets=Array(ex.ns).fill('').map((_,si)=>{
+      const v=(S.draft[ex.n]||[])[si]||'';
+      return `<div>
+        <div style="color:${MUT};font-size:10px;font-weight:700;margin-bottom:5px">SET ${si+1} (kg×reps)</div>
+        <input value="${v.replace(/"/g,'&quot;')}" oninput="updDraft('${ex.n.replace(/'/g,'\\u0027')}',${si},this.value)" placeholder="e.g. 20×10">
+      </div>`;
+    }).join('');
+    return `<div class="card">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        ${ex.star?'<span style="font-size:13px;color:#FFD700">⭐</span>':''}
+        <span style="color:#F0F0FC;font-size:14px;font-weight:700;flex:1">${ex.n}</span>
+        <span style="background:${dc.bg};color:${dc.a};font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;flex-shrink:0">${ex.s}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${sets}</div>
+    </div>`;
+  }).join('');
+
+  const feltBtns=[{k:'E',l:'Easy',t:'Too light'},{k:'G',l:'Good',t:'Ideal'},{k:'H',l:'Hard',t:'Challenging'},{k:'M',l:'Max',t:'Near failure'}]
+    .map(f=>`<button onclick="setFelt('${f.k}')" id="fb-${f.k}" style="flex:1;border:${S.felt===f.k?`2px solid ${G}`:`1px solid ${BDR}`};background:${S.felt===f.k?G+'22':'#1A1B2D'};border-radius:12px;padding:10px 4px;cursor:pointer;min-height:56px">
+      <div class="mono" style="color:${S.felt===f.k?G:'#F0F0FC'};font-size:18px;font-weight:900">${f.k}</div>
+      <div style="color:${S.felt===f.k?G:MUT};font-size:10px;margin-top:3px">${f.l}</div>
+    </button>`).join('');
+
+  const skipSection=S.skipConfirm
+    ?`<div><div style="color:#FF6535;font-size:13px;text-align:center;margin-bottom:10px">Skip Week ${S.logWeek} · ${S.logDay}?</div>
+      <div style="display:flex;gap:10px">
+        <button onclick="doSkip()" style="flex:1;padding:13px;background:#FF65351A;border:1px solid #FF653566;border-radius:12px;color:#FF6535;font-size:14px;font-weight:700;cursor:pointer">Yes, skip it</button>
+        <button onclick="S.skipConfirm=false;renderCon()" style="flex:1;padding:13px;background:#1A1B2D;border:1px solid ${BDR};border-radius:12px;color:#F0F0FC;font-size:14px;font-weight:700;cursor:pointer">Cancel</button>
+      </div></div>`
+    :`<button onclick="S.skipConfirm=true;renderCon()" style="width:100%;padding:13px;background:transparent;border:1px solid ${BDR};border-radius:14px;color:${MUT};font-size:14px;font-weight:600;cursor:pointer">⏭  Mark as skipped</button>`;
+
+  return `<div style="padding:0 14px 28px">
+    <div style="padding:14px 0 10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span style="color:${MUT};font-size:11px;font-weight:700;min-width:40px">WEEK</span>
+        <button onclick="chLogWk(-1)" style="background:#1A1B2D;border:1px solid ${BDR};color:#F0F0FC;border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;flex-shrink:0">−</button>
+        <span class="mono" style="color:#F0F0FC;font-size:26px;font-weight:900;min-width:28px;text-align:center">${S.logWeek}</span>
+        <button onclick="chLogWk(1)"  style="background:#1A1B2D;border:1px solid ${BDR};color:#F0F0FC;border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer;flex-shrink:0">+</button>
+      </div>
+      <div style="display:flex;gap:7px">${dayPills}</div>
+    </div>
+    ${exist?.done?`<div style="background:${G}1A;border:1px solid ${G}44;border-radius:12px;padding:10px 14px;margin-bottom:10px;color:${G};font-size:13px;font-weight:600">✓ Already logged — updating below</div>`:''}
+    ${exist?.skipped?`<div style="background:#FF65351A;border:1px solid #FF653544;border-radius:12px;padding:10px 14px;margin-bottom:10px;color:#FF6535;font-size:13px;font-weight:600">This session was marked as skipped</div>`:''}
+    ${exInputs}
+    ${card(`<div style="color:${MUT};font-size:11px;font-weight:700;margin-bottom:10px">HOW DID IT FEEL?</div><div style="display:flex;gap:8px">${feltBtns}</div>`)}
+    ${card(`<div style="color:${MUT};font-size:11px;font-weight:700;margin-bottom:8px">NOTES / NEXT SESSION TARGET</div><textarea oninput="S.logNotes=this.value" placeholder="e.g. Add 2.5kg on bench next week..." rows="3">${S.logNotes}</textarea>`)}
+    <button id="savebtn" onclick="saveSession()" style="width:100%;padding:17px;background:linear-gradient(135deg,${dc.a}EE,${dc.a}99);border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px;font-family:'Chakra Petch',Impact,monospace;letter-spacing:.06em">
+      SAVE  ·  WEEK ${S.logWeek}  ${S.logDay}
+    </button>
+    ${skipSection}
+  </div>`;
+}
+
+// ── BODY TAB ──────────────────────────────────────────────────────
+function bodyHTML(){
+  const history=Object.values(S.bodyLogs).filter(b=>b.weight).sort((a,b)=>a.week-b.week);
+  const flds=[
+    {l:'Weight',u:'kg',v:S.bW,   k:'bW',    ph:'72.0',start:72},
+    {l:'Waist', u:'cm',v:S.bWaist,k:'bWaist',ph:'90.0',start:90},
+    {l:'Chest', u:'cm',v:S.bChest,k:'bChest',ph:'97.0',start:97},
+    {l:'Bicep', u:'cm',v:S.bBicep,k:'bBicep',ph:'31.0',start:31},
+  ];
+  const inputs=flds.map(f=>{
+    const n=parseFloat(f.v); const diff=!isNaN(n)?(n-f.start).toFixed(1):null;
+    const clr=diff===null?MUT:(f.l==='Waist'?(diff>0?'#FF6535':G):(diff<0?'#FF6535':G));
+    return `<div class="card">
+      <div style="color:${MUT};font-size:10px;font-weight:700;margin-bottom:5px">${f.l.toUpperCase()} (${f.u})</div>
+      <input inputmode="decimal" value="${String(f.v).replace(/"/g,'&quot;')}" oninput="S.${f.k}=this.value" placeholder="${f.ph}" style="font-size:18px;font-weight:900;font-family:'Chakra Petch',Impact,monospace;margin-bottom:4px">
+      ${diff!==null?`<div style="color:${clr};font-size:12px;font-weight:700">${diff>0?'+':''}${diff} ${f.u}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const histRows=history.map(r=>`<div class="recrow">
+    <div style="flex:1">
+      <div style="color:#F0F0FC;font-size:13px;font-weight:600">Week ${r.week}  ·  ${r.date||'—'}</div>
+      ${r.notes?`<div style="color:${MUT};font-size:11px;margin-top:2px">${r.notes.slice(0,44)}${r.notes.length>44?'…':''}</div>`:''}
+    </div>
+    <div style="text-align:right">
+      <div class="mono" style="color:#F0F0FC;font-size:15px;font-weight:800">${r.weight}kg</div>
+      <div style="color:${MUT};font-size:11px">W:${r.waist}  C:${r.chest}  B:${r.bicep}</div>
+    </div>
+  </div>`).join('');
+
+  return `<div style="padding:0 14px 28px">
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 0 12px">
+      <span style="color:${MUT};font-size:11px;font-weight:700">LOG WEEK</span>
+      <button onclick="chBdyWk(-1)" style="background:#1A1B2D;border:1px solid ${BDR};color:#F0F0FC;border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer">−</button>
+      <span class="mono" style="color:#F0F0FC;font-size:26px;font-weight:900;min-width:28px;text-align:center">${S.bWk}</span>
+      <button onclick="chBdyWk(1)"  style="background:#1A1B2D;border:1px solid ${BDR};color:#F0F0FC;border-radius:8px;width:38px;height:38px;font-size:20px;cursor:pointer">+</button>
+    </div>
+    <div style="background:#1A1B2D;border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-around">
+      ${[['START WT','72 kg'],['START WAIST','90 cm'],['START CHEST','97 cm']].map(([l,v])=>`<div style="text-align:center"><div style="color:${MUT};font-size:10px;font-weight:700">${l}</div><div class="mono" style="color:#F0F0FC;font-size:17px;font-weight:900;margin-top:2px">${v}</div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">${inputs}</div>
+    ${card(`<div style="color:${MUT};font-size:11px;font-weight:700;margin-bottom:8px">NOTES</div><textarea oninput="S.bNotes=this.value" placeholder="Energy levels, sleep quality, recovery..." rows="3">${S.bNotes}</textarea>`,`style="margin-bottom:14px"`)}
+    <button id="savebdybtn" onclick="saveBody()" style="width:100%;padding:17px;background:linear-gradient(135deg,${G}EE,#00E89F);border:none;border-radius:14px;color:#000;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:16px;font-family:'Chakra Petch',Impact,monospace;letter-spacing:.06em">
+      SAVE WEEK ${S.bWk} MEASUREMENTS
+    </button>
+    ${history.length?`${h('MEASUREMENT HISTORY')}${histRows}`:''}
+  </div>`;
+}
+
+// ── FOOD TAB ──────────────────────────────────────────────────────
+function foodHTML(){
+  const meals=MEALS.map(m=>`<div class="card" style="${m.key?`border-color:${G}55`:''}">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div>
+        <div style="color:${MUT};font-size:11px;font-weight:700">${m.t}</div>
+        <div style="color:${m.key?G:'#F0F0FC'};font-size:15px;font-weight:800;margin-top:2px">${m.m}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:12px">
+        <div class="mono" style="color:#F0F0FC;font-size:14px;font-weight:800">${m.p}</div>
+        <div style="color:${MUT};font-size:11px;margin-top:2px">${m.k}</div>
+      </div>
+    </div>
+    <div style="color:#F0F0FCCC;font-size:13px;line-height:1.6;margin-bottom:8px">${m.f}</div>
+    <div style="background:${m.key?G+'1A':'rgba(255,255,255,.04)'};border-radius:8px;padding:6px 10px">
+      <span style="color:${m.key?G:MUT};font-size:12px">${m.key?'⚡':'💡'} ${m.n}</span>
+    </div>
+  </div>`).join('');
+
+  const rules=RULES.map((r,i)=>`<div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start">
+    <div class="mono" style="color:${G};font-size:15px;font-weight:900;flex-shrink:0;min-width:18px;margin-top:1px">${i+1}</div>
+    <div style="color:#F0F0FCCC;font-size:13px;line-height:1.55">${r}</div>
+  </div>`).join('');
+
+  return `<div style="padding:0 14px 28px">
+    <div style="background:#041910;border-radius:16px;border:1px solid ${G}44;padding:18px 16px;margin:14px 0">
+      <div style="color:${G};font-size:10px;font-weight:700;letter-spacing:.1em;margin-bottom:10px">DAILY TARGETS — MUSCLE GAIN</div>
+      <div style="display:flex;justify-content:space-around">
+        <div style="text-align:center"><div class="mono" style="color:${G};font-size:28px;font-weight:900;line-height:1">2,000</div><div style="color:${G}AA;font-size:11px;margin-top:3px">– 2,100 kcal</div></div>
+        <div style="width:1px;background:${G}33"></div>
+        <div style="text-align:center"><div class="mono" style="color:${G};font-size:28px;font-weight:900;line-height:1">140g</div><div style="color:${G}AA;font-size:11px;margin-top:3px">protein / day</div></div>
+      </div>
+    </div>
+    ${meals}
+    <div style="margin-top:8px">${h('KEY RULES')}${rules}</div>
+  </div>`;
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function renderHdr(){ document.getElementById('hdr').innerHTML=hdrHTML(); }
+function renderNav(){ document.getElementById('nav').innerHTML=navHTML(); }
+function renderCon(){
+  const el=document.getElementById('con');
+  switch(S.tab){
+    case 'dashboard': el.innerHTML=dashHTML(); break;
+    case 'workout':   el.innerHTML=workHTML(); break;
+    case 'log':       el.innerHTML=logHTML();  break;
+    case 'body':      el.innerHTML=bodyHTML(); break;
+    case 'food':      el.innerHTML=foodHTML(); break;
+  }
+  el.scrollTop=0;
+}
+function renderAll(){ renderHdr(); renderCon(); renderNav(); }
+
+// ── EVENTS ────────────────────────────────────────────────────────
+window.setTab=t=>{ S.tab=t; renderAll(); };
+window.setDay=d=>{ S.day=d; renderAll(); };
+window.chWk=delta=>{ S.week=Math.max(1,Math.min(16,S.week+delta)); persist(); renderAll(); };
+window.toggleEx=i=>{ const c=document.getElementById('ex'+i); if(c){ c.classList.toggle('open'); const a=c.querySelector('span:last-child'); if(a) a.textContent=c.classList.contains('open')?'▲':'▼'; }};
+window.pickLogDay=d=>{ S.logDay=d; S.skipConfirm=false; initDraft(d,S.logWeek); renderCon(); };
+window.chLogWk=delta=>{ S.logWeek=Math.max(1,Math.min(16,S.logWeek+delta)); S.skipConfirm=false; initDraft(S.logDay,S.logWeek); renderCon(); };
+window.updDraft=(name,si,val)=>{ if(!S.draft[name]) S.draft[name]=[]; S.draft[name][si]=val; };
+window.setFelt=k=>{ S.felt=k; document.querySelectorAll('[id^="fb-"]').forEach(b=>{ const isMe=b.id===`fb-${k}`; b.style.border=isMe?`2px solid ${G}`:`1px solid ${BDR}`; b.style.background=isMe?G+'22':'#1A1B2D'; b.querySelector('div').style.color=isMe?G:'#F0F0FC'; b.querySelectorAll('div')[1].style.color=isMe?G:MUT; }); };
+window.saveSession=()=>{
+  const key=`W${S.logWeek}-${S.logDay}`;
+  S.sessions[key]={...S.sessions[key], date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}), felt:S.felt, exercises:JSON.parse(JSON.stringify(S.draft)), notes:S.logNotes, done:true, skipped:false};
+  persist();
+  const btn=document.getElementById('savebtn');
+  if(btn){ btn.textContent='✓  SAVED!'; btn.style.background=G; btn.style.color='#000'; setTimeout(renderCon,2200); }
+};
+window.doSkip=()=>{
+  const key=`W${S.logWeek}-${S.logDay}`;
+  S.sessions[key]={...S.sessions[key], date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}), skipped:true, done:false, reason:S.logNotes||'Not given'};
+  persist(); S.skipConfirm=false; renderCon();
+};
+window.chBdyWk=delta=>{ S.bWk=Math.max(1,Math.min(16,S.bWk+delta)); initBody(S.bWk); renderCon(); };
+window.saveBody=()=>{
+  S.bodyLogs[`W${S.bWk}`]={week:S.bWk, date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}), weight:parseFloat(S.bW)||'', waist:parseFloat(S.bWaist)||'', chest:parseFloat(S.bChest)||'', bicep:parseFloat(S.bBicep)||'', notes:S.bNotes};
+  persist();
+  const btn=document.getElementById('savebdybtn');
+  if(btn){ btn.textContent='✓  SAVED!'; btn.style.opacity='.8'; setTimeout(renderCon,2200); }
+};
+
+// ── INIT ─────────────────────────────────────────────────────────
+load();
+renderAll();
+</script>
+</body>
+</html>
